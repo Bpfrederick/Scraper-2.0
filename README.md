@@ -1,7 +1,3 @@
-Sure, here’s a comprehensive README file for your GitHub repository that includes a description of the script, the issue, and the goal:
-
----
-
 # ASC License Scraper
 
 This repository contains a Python script designed to scrape email addresses from a specific web page by automating the process of entering license numbers and solving reCAPTCHA using the 2Captcha service.
