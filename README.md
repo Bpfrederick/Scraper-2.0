@@ -1,73 +1,108 @@
-# License Search Scraper
+# README
 
-This repository contains a Python script designed to scrape email addresses from a specific web page by automating the process of entering license numbers and solving reCAPTCHA using the 2Captcha service.
+## Overview
+This Python script automates the process of retrieving email addresses from the Texas Department of State Health Services licensing search website. The script reads license numbers from an Excel file, performs searches on the website, solves reCAPTCHAs using 2Captcha, and updates the Excel file with the found email addresses.
 
-## Description
+## Prerequisites
+- Python 3.x
+- Required Python libraries:
+  - `os`
+  - `time`
+  - `requests`
+  - `pandas`
+  - `selenium`
+  - `beautifulsoup4`
+  - `re`
+- Google Chrome and ChromeDriver
 
-The `asc_scraper.py` script is a web scraper that utilizes Selenium to automate browser actions and 2Captcha to solve reCAPTCHA challenges. The primary function of the script is to navigate through a licensing website, enter a license number, solve the reCAPTCHA, and retrieve relevant information.
+## Installation
 
-## Requirements
+1. **Install Python packages**:
+   ```bash
+   pip install pandas requests selenium beautifulsoup4
+   ```
 
-- Python 3.7+
-- Selenium
-- Requests
-- Chrome WebDriver
-- 2Captcha API key
+2. **Download ChromeDriver**:
+   Ensure that the ChromeDriver version matches your installed version of Google Chrome. Download ChromeDriver from [here](https://sites.google.com/a/chromium.org/chromedriver/downloads) and place it in a directory included in your system's PATH.
 
-## Setup
-
-1. **Clone the Repository**
-    ```bash
-    git clone https://github.com/yourusername/ASC_License_Scraper.git
-    cd ASC_License_Scraper
-    ```
-
-2. **Install Dependencies**
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-3. **Set Environment Variables**
-    Ensure you have your 2Captcha API key set in your environment variables:
-    ```bash
-    export 2CAPTCHA_API_KEY=your_2captcha_api_key
-    ```
-
-4. **Download Chrome WebDriver**
-    Download the Chrome WebDriver compatible with your Chrome browser version from [here](https://sites.google.com/a/chromium.org/chromedriver/downloads) and place it in a directory included in your system PATH.
+3. **Set up 2Captcha API key**:
+   Obtain an API key from [2Captcha](https://2captcha.com/), and replace the placeholder `'d4ce7f9fd51c4747cc03ec6f47fd0b1e'` in the script with your actual API key.
 
 ## Usage
 
-To run the scraper script, use the following command:
-```bash
-python asc_scraper.py
-```
+1. **Prepare the Excel file**:
+   - The script reads license numbers from an Excel file located at `C:\Users\bfrederick\OneDrive - Heartland Medical Sales and Service\Heartland\ASCSCRAP\TXASCS.xlsx`.
+   - Ensure that the Excel file has a column named `LICENSE NUMBER` containing the license numbers.
 
-## Script Workflow
+2. **Run the script**:
+   ```bash
+   python script_name.py
+   ```
 
-1. **Initialize WebDriver**: Launches a Chrome browser instance.
-2. **Navigate to Website**: Opens the login page of the target website.
-3. **Navigate to Search Page**: Clicks through to the licensing search page.
-4. **Enter License Number**: Inputs a predefined license number.
-5. **Solve reCAPTCHA**: Uses the 2Captcha service to solve the reCAPTCHA.
-6. **Submit Form**: Submits the search form and retrieves the result.
+## Script Explanation
 
-## Issue
+1. **Loading the Excel File**:
+   The script loads the Excel file into a DataFrame using `pandas`.
 
-Despite setting up the script correctly and ensuring the 2Captcha service works with manual `curl` requests, the script fails at the point of solving the reCAPTCHA. The `IndexError: list index out of range` indicates that the response from 2Captcha is not in the expected format, suggesting that the request to 2Captcha may not be correctly formatted or handled in the script.
+   ```python
+   df = pd.read_excel(file_path, dtype=str)
+   ```
 
-## Goal
+2. **Setting Up Selenium**:
+   The script configures Selenium to use Chrome in maximized mode.
 
-The goal is to successfully integrate the 2Captcha solution with the Selenium script to automate the process of solving reCAPTCHA challenges. This involves:
-1. **Correctly Sending Requests to 2Captcha**: Ensure the request to solve the reCAPTCHA is properly formatted and sent.
-2. **Handling Responses Appropriately**: Properly parse and handle the responses from 2Captcha to retrieve the CAPTCHA solution.
-3. **Automating Form Submission**: Integrate the reCAPTCHA solution into the form submission process to retrieve the desired information from the website.
+   ```python
+   chrome_options = webdriver.ChromeOptions()
+   chrome_options.add_argument('--start-maximized')
+   driver = webdriver.Chrome(options=chrome_options)
+   ```
 
-## Troubleshooting Steps
+3. **Solving reCAPTCHA**:
+   The `solve_recaptcha` function sends a request to 2Captcha to solve the reCAPTCHA and returns the solution.
 
-1. **Verify API Key**: Ensure the 2Captcha API key is correct and has sufficient balance.
-2. **Manual Verification with `curl`**: Use `curl` to manually test the 2Captcha request and verify the service works.
-3. **Refine Script**: Add detailed logging and error handling to diagnose and resolve issues with the script.
+   ```python
+   def solve_recaptcha(site_key, page_url):
+       ...
+   ```
+
+4. **Iterating Over License Numbers**:
+   The script iterates over the license numbers from the specified starting index, performs the search, solves the reCAPTCHA, and retrieves the email addresses.
+
+   ```python
+   for index, lic_number in enumerate(lic_numbers[start_index:], start=start_index):
+       ...
+   ```
+
+5. **Handling WebDriver Exceptions**:
+   The script retries up to three times if a `WebDriverException` occurs.
+
+   ```python
+   except WebDriverException as e:
+       ...
+   ```
+
+6. **Updating the Excel File**:
+   After each email address is found, the script updates the Excel file with the new data.
+
+   ```python
+   df.to_excel(file_path, index=False)
+   ```
+
+## Notes
+
+- Ensure that the necessary dependencies are installed and properly configured.
+- The script uses hardcoded file paths and API keys. Modify these as needed to suit your environment.
+- The script may need adjustments if the website structure changes or if the ChromeDriver version does not match the Chrome browser version.
+
+## Troubleshooting
+
+- **WebDriverException**: Ensure that ChromeDriver is correctly installed and that the version matches your installed Chrome browser.
+- **2Captcha API issues**: Ensure that your API key is valid and that your account has sufficient balance.
+- **Excel file path issues**: Verify that the file path is correct and that the Excel file is accessible.
+
+## Contact
+
+For any questions or issues, please contact the script author or refer to the documentation of the respective libraries and services used.
 
 ## Contribution
 
