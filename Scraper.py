@@ -1,19 +1,23 @@
 import os
 import time
 import requests
+import pandas as pd
 from selenium import webdriver
+from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 import re
 
-# Get your 2Captcha API key from the environment variable
-API_KEY = os.getenv('2CAPTCHA_API_KEY')
+# Load the Excel file
+file_path = r"C:\Users\bfrederick\OneDrive - Heartland Medical Sales and Service\Heartland\ASCSCRAP\TXASCS.xlsx"
+df = pd.read_excel(file_path, dtype=str)
 
+# Get your 2Captcha API key from the environment variable
+API_KEY = 'd4ce7f9fd51c4747cc03ec6f47fd0b1e'
 
 try:
-
     # Ensure the API key is not None
     print(API_KEY)
     if API_KEY is None:
@@ -51,79 +55,128 @@ try:
                 return result.get('request')
             time.sleep(5)
 
-    #try:
-    # Step 1: Navigate to the login page
-    driver.get('https://vo.ras.dshs.state.tx.us/datamart/login.do')
-    print('Navigated to login page')
+    # Format license numbers to ensure leading zeros
+    lic_numbers = [num.zfill(6) for num in df['LICENSE NUMBER']]
 
-    # Step 2: Navigate to the licensing search page
-    driver.get('https://vo.ras.dshs.state.tx.us/datamart/selSearchTypeTXRAS.do?from=loginPage')
-    print('Navigated to licensing search page')
+    # Start from the specific row
+    start_index = 553
 
-    # Step 3: Choose "Search by License Number"
-    driver.get(PAGE_URL)
-    print('Navigated to "Search by License Number" page')
+    for index, lic_number in enumerate(lic_numbers[start_index:], start=start_index):
+        retry_count = 0
+        while retry_count < 3:
+            try:
+                print(f'Processing license number: {lic_number} (Row {index + 1})')
+                
+                # Step 1: Navigate to the login page
+                driver.get('https://vo.ras.dshs.state.tx.us/datamart/login.do')
+                print('Navigated to login page')
 
-    # Step 4: Input the license number
-    lic_number_input = wait.until(EC.presence_of_element_located((By.ID, 'licNumber')))
-    lic_number_input.send_keys('008375')
-    print('Entered license number')
+                # Step 2: Navigate to the licensing search page
+                driver.get('https://vo.ras.dshs.state.tx.us/datamart/selSearchTypeTXRAS.do?from=loginPage')
+                print('Navigated to licensing search page')
 
-    # Step 5: Solve the reCAPTCHA using 2Captcha
-    recaptcha_response = solve_recaptcha(SITE_KEY, PAGE_URL)
+                # Step 3: Choose "Search by License Number"
+                driver.get(PAGE_URL)
+                print('Navigated to "Search by License Number" page')
 
-    # Set the recaptcha response in the element
-    driver.execute_script(f'document.getElementById("g-recaptcha-response").innerHTML="{recaptcha_response}";')
-    print('reCAPTCHA solved')
+                # Step 4: Input the license number
+                lic_number_input = wait.until(EC.presence_of_element_located((By.ID, 'licNumber')))
+                lic_number_input.send_keys(str(lic_number))
+                print(f'Entered license number: {lic_number}')
 
-    # Wait for the recaptcha iframe to disappear
-    time.sleep(2)  # Wait for a short time to ensure the recaptcha is processed
+                # Step 5: Solve the reCAPTCHA using 2Captcha
+                recaptcha_response = solve_recaptcha(SITE_KEY, PAGE_URL)
 
-    # Step 6: Click the submit button and wait for navigation
-    submit_button = driver.find_element(By.XPATH, '//input[@name="search" and @value="Search"]')
-    driver.execute_script("arguments[0].click();", submit_button)
-    print('Clicked the submit button')
+                # Set the recaptcha response in the element
+                driver.execute_script(f'document.getElementById("g-recaptcha-response").innerHTML="{recaptcha_response}";')
+                print('reCAPTCHA solved')
 
-    time.sleep(2)
+                # Wait for the recaptcha iframe to disappear
+                time.sleep(2)  # Wait for a short time to ensure the recaptcha is processed
 
-    # save the html from the page to a file
-    with open('page.html', 'w') as f:
-        f.write(driver.page_source)
+                # Step 6: Click the submit button and wait for navigation
+                submit_button = driver.find_element(By.XPATH, '//input[@name="search" and @value="Search"]')
+                driver.execute_script("arguments[0].click();", submit_button)
+                print('Clicked the submit button')
 
-    # Step 7: Wait for the result table to load
-    #wait.until(EC.presence_of_element_located((By.XPATH, '//table[@class="formListing"]//th[contains(text(),"License Number")]')))
-    wait.until(EC.presence_of_element_located((By.XPATH, '//td[@class="labelCell"]//span[contains(text(),"License Number")]')))
-    #print('Result page loaded')
+                time.sleep(2)
 
-    # Step 8: Parse the HTML with BeautifulSoup and find the "ADC ENDOSCOPY SPECIALISTS" link
-    html = driver.page_source
-    soup = BeautifulSoup(html, 'html.parser')
+                # Wait for the result table to load
+                wait.until(EC.presence_of_element_located((By.XPATH, '//td[@class="labelCell"]//span[contains(text(),"License Number")]')))
 
-    rows = WebDriverWait(driver, 10).until(
-        EC.presence_of_all_elements_located((By.CLASS_NAME, 'itemRow'))
-    )
+                # Step 7: Parse the HTML with BeautifulSoup and find the link
+                html = driver.page_source
+                soup = BeautifulSoup(html, 'html.parser')
 
-    adc_link = None
-    for row in rows:
-        if 'Ambulatory Surgical Center' in row.text:
-            links = row.find_elements(By.TAG_NAME, 'a')
-            for link in links:
-                link_text = link.text.strip()
-                if re.search(r'^ADC ENDOSCOPY SPECIALISTS$', link_text):
-                    adc_link = link
-                    break
-        if adc_link:
-            break
+                rows = WebDriverWait(driver, 10).until(
+                    EC.presence_of_all_elements_located((By.XPATH, "//tr[contains(@class, 'itemRow') or contains(@class, 'itemRowAlt')]"))
+                )
 
-    if adc_link:
-        # Click the link
-        adc_link.click()
-    else:
-        print('Could not find the ADC ENDOSCOPY SPECIALISTS link')
+                asc_row = None
+                for row in rows:
+                    if 'Ambulatory Surgical Center' in row.text:
+                        asc_row = row
+                        break
 
-    time.sleep(30)
+                if asc_row:
+                    link = asc_row.find_element(By.TAG_NAME, 'a')
+                    if link:
+                        link.click()
+                        print('Navigated to the next page')
+                    else:
+                        print('No link found in the "Ambulatory Surgical Center" row')
+                else:
+                    print('No row found with "Ambulatory Surgical Center"')
 
-    #detailsTXRAS.do?anchor=2b99ad3.0.0
+                time.sleep(30)
+                
+                # Step 9: Parse the page to find the email address
+                email_pattern = r'<([a-zA-Z][a-zA-Z0-9]*)\b[^>]*>([^<]*@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})<\/\1>'
+                email_match = re.search(email_pattern, driver.page_source)
+                
+                if email_match:
+                    email = email_match.group(2)
+                    print(f"Found email address: {email}")
+                    df.at[index, 'Email'] = email
+                else:
+                    print("No email address found in the HTML.")
+                    df.at[index, 'Email'] = 'Not Found'
+
+                # Save the updated DataFrame back to the Excel file after each email is found
+                df.to_excel(file_path, index=False)
+                print('Updated Excel file saved.')
+
+                # Wait for the email to be processed
+                time.sleep(2)  # Wait for a short time to ensure the email is processed
+
+                # Step 10: Click the new criteria button and wait for navigation
+                new_criteria = driver.find_element(By.XPATH, '//input[@name="newcriteria" and @value="New Search Criteria"]')
+                driver.execute_script("arguments[0].click();", new_criteria)
+                print('Clicked the New Criteria button')
+
+                time.sleep(2)
+
+                # Step 11: Click the clear button and wait for navigation
+                clear = driver.find_element(By.XPATH, '//input[@name="clear" and @value="Clear"]')
+                driver.execute_script("arguments[0].click();", clear)
+                print('Clicked the Clear button')
+
+                time.sleep(2)
+
+                break
+
+            except WebDriverException as e:
+                retry_count += 1
+                print(f"An error occurred: {e}. Retrying {retry_count}/3...")
+                time.sleep(5)  # Wait before retrying
+
+    # Save the updated DataFrame back to the Excel file one last time after all iterations
+    df.to_excel(file_path, index=False)
+    print('Final updated Excel file saved.')
+
 except Exception as e:
     print("An error occurred:", str(e))
-        # Don't close the browser so you can inspect it
+    # Don't close the browser so you can inspect it
+
+finally:
+    driver.quit()
