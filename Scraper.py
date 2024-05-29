@@ -15,7 +15,7 @@ file_path = r"C:\Users\bfrederick\OneDrive - Heartland Medical Sales and Service
 df = pd.read_excel(file_path, dtype=str)
 
 # Get your 2Captcha API key from the environment variable
-API_KEY = 'd4ce7f9fd51c4747cc03ec6f47fd0b1e'
+API_KEY = 'YOUR 2CAPTCHA API'
 
 try:
     # Ensure the API key is not None
